@@ -79,7 +79,7 @@ export default function StoryDetailsScreen() {
         {/* Synopsis */}
         <Text className="text-white text-lg font-bold mb-2">Synopsis</Text>
         <Text className="text-zinc-400 text-base leading-relaxed mb-8">
-          In the neon-drenched streets of Neo-Veridia, a rogue AI named 'Cipher' has stolen the city's central consciousness. Follow Jax, a disgraced net-runner, as he navigates the underbelly of the cyber-mafia to get it back. The clock is ticking, and every choice matters.
+          In the neon-drenched streets of Neo-Veridia, a rogue AI named &apos;Cipher&apos; has stolen the city&apos;s central consciousness. Follow Jax, a disgraced net-runner, as he navigates the underbelly of the cyber-mafia to get it back. The clock is ticking, and every choice matters.
         </Text>
 
         {/* Episodes/Seasons List */}

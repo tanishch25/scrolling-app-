@@ -6,12 +6,7 @@ import { useTrendingStories, useNewReleases } from '../../api/stories';
 
 const { width } = Dimensions.get('window');
 
-const NEW_RELEASES = [
-  { id: '7', title: 'Cyber Punk', genre: 'Action', img: 'https://images.unsplash.com/photo-1555680202-c86f0e12f086?q=80&w=400&auto=format&fit=crop' },
-  { id: '8', title: 'Silent Night', genre: 'Mystery', img: 'https://images.unsplash.com/photo-1478720568477-152d9b164e26?q=80&w=400&auto=format&fit=crop' },
-  { id: '9', title: 'Fallen Angel', genre: 'Fantasy', img: 'https://images.unsplash.com/photo-1517409226500-264627dc4bbf?q=80&w=400&auto=format&fit=crop' },
-  { id: '10', title: 'City of Glass', genre: 'Drama', img: 'https://images.unsplash.com/photo-1480796927426-f609979314bd?q=80&w=400&auto=format&fit=crop' },
-];
+
 
 export default function HomeScreen() {
   const router = useRouter();

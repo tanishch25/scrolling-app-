@@ -1,12 +1,10 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
   withTiming, 
-  withDelay, 
-  withSequence,
   withSpring,
   Easing 
 } from 'react-native-reanimated';
@@ -39,6 +37,7 @@ export default function SplashScreen() {
     }, 2500);
 
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const animatedTextStyle = useAnimatedStyle(() => ({
