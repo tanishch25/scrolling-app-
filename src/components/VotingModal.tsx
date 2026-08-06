@@ -31,3 +31,4 @@ export function VotingModal({ visible, onVote }: { visible: boolean, onVote: (vo
     </Modal>
   );
 }
+

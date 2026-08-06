@@ -38,3 +38,4 @@ export function Skeleton({ style, className }: SkeletonProps) {
     />
   );
 }
+

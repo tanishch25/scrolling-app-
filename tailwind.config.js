@@ -9,7 +9,7 @@ module.exports = {
         'noir-card': '#111111',
         'noir-surface': '#1B1B1B',
         'noir-primary': '#F97316',
-        'noir-primary-dark': '#C2410C', // deep rich orange/red for gradients
+        'noir-primary-dark': '#C2410C',
         'noir-accent': '#D4A017',
         'noir-danger': '#DC2626',
         'noir-border': '#27272A',

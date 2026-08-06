@@ -45,24 +45,27 @@ export default function WelcomeScreen() {
           </Text>
         </View>
 
-        <View className="space-y-4">
+        <View className="w-full">
           <PressableScale 
             onPress={() => router.push('/(auth)/signup')}
-            className="w-full rounded-full overflow-hidden"
+            className="w-full h-14 mb-4"
           >
-            <LinearGradient
-              colors={['#F97316', '#C2410C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="py-4 items-center justify-center border-t border-[#FF9852]"
-            >
-              <Text className="text-white font-bold text-base tracking-widest uppercase">Get Started</Text>
-            </LinearGradient>
+            <View className="flex-1 rounded-full overflow-hidden">
+              <LinearGradient
+                colors={['#F97316', '#C2410C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View className="flex-1 items-center justify-center">
+                <Text className="text-white font-bold text-base tracking-widest uppercase">Get Started</Text>
+              </View>
+            </View>
           </PressableScale>
 
           <PressableScale 
             onPress={() => router.push('/(auth)/login')}
-            className="w-full bg-zinc-900/80 py-4 rounded-full items-center justify-center border border-zinc-700 backdrop-blur-md"
+            className="w-full bg-zinc-900/80 py-4 rounded-full items-center justify-center border border-zinc-700 backdrop-blur-md mb-2"
           >
             <Text className="text-white font-bold text-base tracking-widest uppercase">Log In</Text>
           </PressableScale>
@@ -83,3 +86,4 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   }
 });
+

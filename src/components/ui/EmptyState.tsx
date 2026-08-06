@@ -21,3 +21,4 @@ export function EmptyState({ icon: Icon, title, message, action }: EmptyStatePro
     </View>
   );
 }
+

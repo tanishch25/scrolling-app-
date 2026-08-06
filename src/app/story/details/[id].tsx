@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Play, Plus, ChevronLeft, Star, Clock, Eye, Share2 } from 'lucide-react-native';
+import { Play, Plus, Check, ChevronLeft, Star, Clock, Eye, Share2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PressableScale } from '../../../components/ui/PressableScale';
 import { useSeriesDetails, useSeriesEpisodes } from '../../../hooks/useQueries';
 
@@ -15,6 +16,38 @@ export default function StoryDetailsScreen() {
 
   const { data: series, isLoading: loadingSeries } = useSeriesDetails(id);
   const { data: episodes, isLoading: loadingEpisodes } = useSeriesEpisodes(id);
+  
+  const [isWatchlisted, setIsWatchlisted] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkWatchlist = async () => {
+      try {
+        const list = await AsyncStorage.getItem('watchlist');
+        if (list) {
+          const arr = JSON.parse(list);
+          if (arr.includes(id)) setIsWatchlisted(true);
+        }
+      } catch (e) {}
+    };
+    checkWatchlist();
+  }, [id]);
+
+  const toggleWatchlist = async () => {
+    try {
+      const list = await AsyncStorage.getItem('watchlist');
+      let arr = list ? JSON.parse(list) : [];
+      if (arr.includes(id)) {
+        arr = arr.filter((itemId: string) => itemId !== id);
+        setIsWatchlisted(false);
+      } else {
+        arr.push(id);
+        setIsWatchlisted(true);
+      }
+      await AsyncStorage.setItem('watchlist', JSON.stringify(arr));
+    } catch (e) {
+      console.error('Error toggling watchlist', e);
+    }
+  };
 
   if (loadingSeries || loadingEpisodes) {
     return (
@@ -36,8 +69,7 @@ export default function StoryDetailsScreen() {
   }
 
   const handlePlay = (episodeId: string) => {
-    // In the future this will open the full screen video player
-    router.push(`/story/${episodeId}`);
+    router.push(`/story/play/${series.id}?initialEpisodeId=${episodeId}`);
   };
 
   return (
@@ -104,22 +136,32 @@ export default function StoryDetailsScreen() {
             onPress={() => episodes && episodes.length > 0 ? handlePlay(episodes[0].id) : null}
             className="flex-1 rounded-full overflow-hidden"
           >
-            <LinearGradient
-              colors={['#F97316', '#C2410C']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              className="py-3.5 flex-row items-center justify-center border-t border-[#FF9852]"
-            >
-              <Play size={20} color="white" fill="white" />
-              <Text className="text-white font-bold ml-2 text-base">Watch Now</Text>
-            </LinearGradient>
+            <View className="py-3.5 flex-row items-center justify-center relative">
+              <LinearGradient
+                colors={['#F97316', '#C2410C']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Play size={20} color="white" fill="white" className="relative z-10" />
+              <Text className="text-white font-bold ml-2 text-base relative z-10">Watch Now</Text>
+            </View>
           </PressableScale>
 
           <PressableScale 
-            className="bg-noir-surface py-3.5 rounded-full flex-row items-center justify-center flex-1 border border-zinc-800"
+            onPress={toggleWatchlist}
+            className={`py-3.5 rounded-full flex-row items-center justify-center flex-1 border ${
+              isWatchlisted ? 'bg-noir-primary/20 border-noir-primary/50' : 'bg-noir-surface border-zinc-800'
+            }`}
           >
-            <Plus size={20} color="white" />
-            <Text className="text-white font-bold ml-2 text-base">Save</Text>
+            {isWatchlisted ? (
+              <Check size={20} color="#F97316" />
+            ) : (
+              <Plus size={20} color="white" />
+            )}
+            <Text className={`font-bold ml-2 text-base ${isWatchlisted ? 'text-noir-primary' : 'text-white'}`}>
+              {isWatchlisted ? 'Watchlisted' : 'Watchlist'}
+            </Text>
           </PressableScale>
         </View>
 

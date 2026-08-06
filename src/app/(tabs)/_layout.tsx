@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Home, User, Search, PlaySquare } from 'lucide-react-native';
+import { Home, Search, Film, User, PlusSquare } from 'lucide-react-native';
 import { View, Text, Pressable, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
@@ -8,89 +8,117 @@ import * as Haptics from 'expo-haptics';
 
 const TabIcon = ({ focused, Icon, label }: { focused: boolean; Icon: any; label: string }) => {
   const animatedIconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: withSpring(focused ? 1.2 : 1, { damping: 12, stiffness: 200 }) }],
+    transform: [{ scale: withSpring(focused ? 1.05 : 1, { damping: 12, stiffness: 200 }) }],
   }));
 
-  const animatedTextStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(focused ? 1 : 0.6, { duration: 200 }),
-    transform: [{ translateY: withSpring(focused ? 0 : 2, { damping: 15, stiffness: 200 }) }],
+  const coverStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(focused ? 1 : 0, { duration: 200 }),
+    transform: [{ scale: withSpring(focused ? 1 : 0.6, { damping: 15, stiffness: 200 }) }]
   }));
 
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(focused ? 1 : 0, { duration: 300 }),
-    transform: [{ scale: withSpring(focused ? 1 : 0, { damping: 15, stiffness: 200 }) }]
-  }));
+  // Restore orange touch
+  const iconColor = focused ? '#F97316' : '#71717A'; // zinc-500 for inactive
+  const fillColor = focused ? '#F97316' : 'transparent';
+  
+  // Search icon looks weird when fully filled, so we just use thicker stroke for it, but others get filled
+  const isSearch = label === 'Explore';
 
   return (
-    <View className="items-center justify-center flex-1 py-2">
-      <Animated.View style={glowStyle} className="absolute w-8 h-8 rounded-full bg-noir-primary/20" />
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={[coverStyle, { position: 'absolute', width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(249, 115, 22, 0.1)' }]} />
       <Animated.View style={animatedIconStyle}>
-        <Icon size={24} color={focused ? '#F97316' : '#A1A1AA'} strokeWidth={focused ? 2.5 : 2} />
+        <Icon 
+          size={24} 
+          color={iconColor} 
+          fill={isSearch ? 'transparent' : fillColor} 
+          strokeWidth={focused ? (isSearch ? 2.5 : 2) : 2} 
+        />
       </Animated.View>
-      <Animated.Text 
-        className="text-[10px] mt-1 font-medium" 
-        style={[{ color: focused ? '#F97316' : '#A1A1AA' }, animatedTextStyle]}
-      >
-        {label}
-      </Animated.Text>
     </View>
   );
 };
 
-export default function TabsLayout() {
-  const insets = useSafeAreaInsets();
+function CustomTabBar({ state, descriptors, navigation, insets }: any) {
   const bottomInset = Platform.OS === 'ios' ? insets.bottom : insets.bottom + 10;
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: false,
-        tabBarStyle: {
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          elevation: 0,
-          borderTopWidth: 0,
-          height: 60 + bottomInset,
-        },
-        tabBarBackground: () => (
-          <BlurView 
-            tint="dark" 
-            intensity={80} 
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.7)', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }]} 
-          />
-        ),
-      }}
-      screenListeners={{
-        tabPress: () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        },
+    <View 
+      style={{ 
+        position: 'absolute', 
+        bottom: bottomInset > 0 ? bottomInset + 8 : 24, 
+        left: 32, 
+        right: 32, 
+        height: 60, 
+        borderRadius: 30, 
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1, 
+        borderColor: 'rgba(255,255,255,0.1)',
+        overflow: 'hidden'
       }}
     >
-      <Tabs.Screen
-        name="home"
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} Icon={Home} label="Home" />,
-        }}
-      />
-      <Tabs.Screen
-        name="spotlight"
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} Icon={PlaySquare} label="Spotlight" />,
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} Icon={Search} label="Explore" />,
-        }}
-      />
-      <Tabs.Screen
-        name="my"
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon focused={focused} Icon={User} label="My" />,
-        }}
-      />
+      <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.85)' }]} />
+      
+      {state.routes.map((route: any, index: number) => {
+        const { options } = descriptors[route.key];
+        const isFocused = state.index === index;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+
+          if (!isFocused && !event.defaultPrevented) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.navigate(route.name, route.params);
+          }
+        };
+
+        const onLongPress = () => {
+          navigation.emit({
+            type: 'tabLongPress',
+            target: route.key,
+          });
+        };
+
+        let Icon = Home;
+        let label = 'Home';
+        if (route.name === 'explore') { Icon = Search; label = 'Explore'; }
+        if (route.name === 'spotlight') { Icon = Film; label = 'Spotlight'; }
+        if (route.name === 'my') { Icon = User; label = 'My'; }
+
+        return (
+          <Pressable
+            key={index}
+            onPress={onPress}
+            onLongPress={onLongPress}
+            style={{ flex: 1, alignItems: 'center', justifyContent: 'center', height: '100%' }}
+          >
+            <TabIcon focused={isFocused} Icon={Icon} label={label} />
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+  
+  return (
+    <Tabs
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => <CustomTabBar {...props} insets={insets} />}
+    >
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="explore" />
+      <Tabs.Screen name="spotlight" />
+      <Tabs.Screen name="my" />
     </Tabs>
   );
 }
+

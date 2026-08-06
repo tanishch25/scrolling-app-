@@ -22,3 +22,4 @@ export default function Index() {
   // Otherwise force them to auth screen
   return <Redirect href="/(auth)/welcome" />;
 }
+

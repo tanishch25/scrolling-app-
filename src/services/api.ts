@@ -37,7 +37,9 @@ export const api = {
       .order('engagement_score', { ascending: false })
       .limit(10);
     if (error) throw error;
-    return data;
+    // Randomize the feed
+    const shuffled = data.sort(() => 0.5 - Math.random());
+    return shuffled;
   },
 
   async getSeriesDetails(id: string) {
@@ -61,6 +63,16 @@ export const api = {
       .eq('seasons.series_id', seriesId)
       .is('deleted_at', null)
       .order('episode_number', { ascending: true });
+    if (error) throw error;
+    return data;
+  },
+  
+  async getEpisodeDetails(episodeId: string) {
+    const { data, error } = await supabase
+      .from('episodes')
+      .select('*')
+      .eq('id', episodeId)
+      .single();
     if (error) throw error;
     return data;
   }

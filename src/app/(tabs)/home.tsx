@@ -1,14 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions, FlatList } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, Image, Dimensions, FlatList, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Play, Plus } from 'lucide-react-native';
+import { Play, Plus, Check } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-} from 'react-native-reanimated';
-import { useTrendingSeries, useNewReleases } from '../../hooks/useQueries';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTrendingSeries, useFeaturedSeries, useAllSeries } from '../../hooks/useQueries';
 import { PressableScale } from '../../components/ui/PressableScale';
 import { Skeleton } from '../../components/ui/Skeleton';
 
@@ -57,69 +53,119 @@ const GENRES = [
 export default function HomeScreen() {
   const router = useRouter();
   const { data: topPicks, isLoading: topPicksLoading } = useTrendingSeries();
+  const { data: heroSeries, isLoading: heroLoading } = useFeaturedSeries();
+  const { data: allSeries, isLoading: allSeriesLoading } = useAllSeries();
   const [activeSlide, setActiveSlide] = useState(0);
+  const [activeGenreTab, setActiveGenreTab] = useState<string>('All');
+  const [watchlistedIds, setWatchlistedIds] = useState<Set<string>>(new Set());
+
+  const toggleWatchlist = useCallback(async (id: string) => {
+    try {
+      const listStr = await AsyncStorage.getItem('watchlist');
+      const ids: string[] = listStr ? JSON.parse(listStr) : [];
+      let newIds: string[];
+      if (ids.includes(id)) {
+        newIds = ids.filter((i) => i !== id);
+      } else {
+        newIds = [...ids, id];
+      }
+      await AsyncStorage.setItem('watchlist', JSON.stringify(newIds));
+      setWatchlistedIds(new Set(newIds));
+    } catch (e) {
+      console.error('Watchlist error', e);
+    }
+  }, []);
+
+  const dynamicGenres = React.useMemo(() => {
+    if (!allSeries) return GENRES;
+    
+    // Get unique genres from DB, filter out undefined/null
+    const uniqueGenres = Array.from(new Set(allSeries.map((s: any) => s.genre).filter(Boolean)));
+    
+    // Map to objects with colors
+    const colors = ['#E11D48', '#7C3AED', '#DC2626', '#059669', '#2563EB', '#D97706', '#DB2777', '#0EA5E9', '#8B5CF6', '#14B8A6'];
+    
+    return uniqueGenres.map((name: any, idx) => {
+      const existing = GENRES.find(g => g.name.toLowerCase() === name.toLowerCase());
+      return {
+        id: `dg-${idx}`,
+        name,
+        color: existing ? existing.color : colors[idx % colors.length]
+      };
+    });
+  }, [allSeries]);
 
   const handlePress = (id: string) => {
     router.push(`/story/details/${id}`);
   };
 
-  const renderHeroItem = ({ item }: { item: typeof HERO_SLIDES[0] }) => {
+  const renderHeroItem = ({ item }: { item: any }) => {
+    const imageUri = item.image || item.cover_large_url || item.cover_url || item.cover_thumb_url;
+    const description = item.teaser || item.description || '';
+    const isWatchlisted = watchlistedIds.has(item.id);
     return (
-      <View style={{ width, height: 500 }} className="relative">
-        <Image 
-          source={{ uri: item.image }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
-        <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.8)', '#000000']}
-          style={StyleSheet.absoluteFill}
-          locations={[0, 0.3, 0.7, 1]}
-        />
-        
-        {/* Top Right App Icon */}
-        <View className="absolute top-14 right-6">
+      <View style={{ width }} className="px-5 pt-20 pb-2">
+        {/* Compact Hero Card - smaller than screen with rounded corners */}
+        <View style={{ height: 400, borderRadius: 28, overflow: 'hidden' }}>
+          {/* Thumbnail - using absoluteFill with explicit pixel size */}
           <Image 
-            source={require('../../../assets/images/icon.png')}
-            className="w-10 h-10 rounded shadow-lg"
+            source={imageUri ? { uri: imageUri } : require('../../../assets/images/icon.png')}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: width - 40, height: 400 }}
+            resizeMode="cover"
           />
-        </View>
+          {/* Gradient only at very bottom so thumbnail shows clearly */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.98)']}
+            style={StyleSheet.absoluteFill}
+            locations={[0, 0.5, 0.75, 1]}
+          />
 
-        <View className="absolute bottom-8 left-0 right-0 px-6">
-          <View className="flex-row items-center justify-center space-x-3 mb-2">
-            <Text className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.2em]">{item.genre}</Text>
-          </View>
-          
-          <Text className="text-white text-5xl font-black text-center mb-4 tracking-tighter" style={styles.shadowText}>
-            {item.title}
-          </Text>
-          
-          <Text className="text-zinc-300 text-center font-medium text-sm mb-6 px-8 leading-relaxed">
-            {item.teaser}
-          </Text>
-          
-          <View className="flex-row items-center w-full justify-center space-x-3">
-            <PressableScale 
-              onPress={() => handlePress(item.id)}
-              className="rounded-full overflow-hidden flex-1 max-w-[180px]"
-            >
-              <LinearGradient
-                colors={['#F97316', '#C2410C']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                className="py-3.5 flex-row items-center justify-center border-t border-[#FF9852]"
-              >
-                <Play size={16} color="white" fill="white" />
-                <Text className="text-white font-bold ml-2 text-sm tracking-widest uppercase">Start Watching</Text>
-              </LinearGradient>
-            </PressableScale>
+          {/* Bottom Content - all center aligned */}
+          <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, alignItems: 'center' }}>
+            {/* Genre - plain text, no box */}
+            <Text style={{ color: '#a1a1aa', fontWeight: '700', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>
+              {item.genre}
+            </Text>
+
+            {/* Title - center */}
+            <Text style={{ color: 'white', fontSize: 32, fontWeight: '900', letterSpacing: -1, textAlign: 'center', marginBottom: 8, textShadowColor: 'rgba(0,0,0,0.9)', textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 10 }} numberOfLines={1}>
+              {item.title}
+            </Text>
+
+            {/* Description - center, below title */}
+            <Text style={{ color: '#d4d4d8', fontSize: 12, fontWeight: '500', textAlign: 'center', marginBottom: 18, lineHeight: 18, paddingHorizontal: 8 }} numberOfLines={3}>
+              {description}
+            </Text>
             
-            <PressableScale 
-              className="bg-zinc-900/80 px-6 py-3.5 rounded-full flex-row items-center justify-center border border-zinc-700 backdrop-blur-md"
-            >
-              <Plus size={18} color="white" />
-              <Text className="text-white font-bold ml-2 text-sm tracking-widest uppercase">Subscribe</Text>
-            </PressableScale>
+            {/* Buttons - equal width, same style, side by side */}
+            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+              <PressableScale 
+                onPress={() => handlePress(item.id)}
+                style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}
+              >
+                <LinearGradient
+                  colors={['#F97316', '#C2410C']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{ paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 16 }}
+                >
+                  <Play size={15} color="white" fill="white" />
+                  <Text style={{ color: 'white', fontWeight: '700', marginLeft: 7, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase' }}>Watch</Text>
+                </LinearGradient>
+              </PressableScale>
+              
+              <PressableScale 
+                onPress={() => toggleWatchlist(item.id)}
+                style={{ flex: 1, borderRadius: 16, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: isWatchlisted ? 'rgba(249,115,22,0.2)' : 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: isWatchlisted ? 'rgba(249,115,22,0.6)' : 'rgba(255,255,255,0.25)' }}
+              >
+                {isWatchlisted 
+                  ? <Check size={15} color="#F97316" />
+                  : <Plus size={15} color="white" />}
+                <Text style={{ color: isWatchlisted ? '#F97316' : 'white', fontWeight: '700', marginLeft: 7, fontSize: 13, letterSpacing: 1, textTransform: 'uppercase' }}>
+                  {isWatchlisted ? 'Added' : 'Watchlist'}
+                </Text>
+              </PressableScale>
+            </View>
           </View>
         </View>
       </View>
@@ -132,7 +178,7 @@ export default function HomeScreen() {
       className="w-36 mr-4 relative rounded-md overflow-hidden bg-noir-card border border-zinc-800"
     >
       <Image 
-        source={{ uri: item.cover_url || item.img }}
+        source={{ uri: item.cover_url || item.cover_thumb_url || item.img || 'https://via.placeholder.com/400' }}
         className="w-full h-52"
       />
       <LinearGradient
@@ -146,62 +192,75 @@ export default function HomeScreen() {
     </PressableScale>
   );
 
-  const renderGenre = ({ item }: { item: typeof GENRES[0] }) => (
-    <PressableScale className="w-40 mr-4 h-24 rounded-lg overflow-hidden justify-end p-4 border border-zinc-800" style={{ backgroundColor: item.color }}>
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.6)']}
-        style={StyleSheet.absoluteFill}
-      />
-      <Text className="text-white font-bold text-lg tracking-widest uppercase relative z-10">{item.name}</Text>
-    </PressableScale>
-  );
-
   return (
-    <FlatList 
-      data={[{ key: 'content' }]}
-      className="flex-1 bg-noir-bg"
-      bounces={false}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 120 }}
-      renderItem={() => (
-        <View>
-          {/* Hero Carousel */}
-          <FlatList 
-            data={HERO_SLIDES}
-            renderItem={renderHeroItem}
-            keyExtractor={(item) => item.id}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            snapToInterval={width}
-            snapToAlignment="start"
-            decelerationRate="fast"
-            bounces={false}
-            onMomentumScrollEnd={(ev) => {
-              const index = Math.round(ev.nativeEvent.contentOffset.x / width);
-              setActiveSlide(index);
-            }}
-          />
+    <View className="flex-1 bg-noir-bg" style={{ position: 'relative' }}>
+      {/* Fixed App Logo - always at top right, never scrolls */}
+      <View style={{ position: 'absolute', top: 56, right: 20, zIndex: 100 }}>
+        <Image 
+          source={require('../../../assets/images/icon.png')}
+          style={{ width: 40, height: 40, borderRadius: 10 }}
+        />
+      </View>
+
+      <FlatList 
+        data={[{ key: 'content' }]}
+        className="flex-1"
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        renderItem={() => (
+          <View>
+            {/* Hero Carousel */}
+            {heroLoading ? (
+              <Skeleton className="mx-5 mt-5" style={{ height: 420, borderRadius: 24 }} />
+          ) : (
+            <FlatList 
+              data={(heroSeries && heroSeries.length > 0) ? heroSeries : HERO_SLIDES}
+              renderItem={renderHeroItem}
+              keyExtractor={(item) => item.id}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={width}
+              snapToAlignment="start"
+              decelerationRate="fast"
+              bounces={false}
+              disableIntervalMomentum={true}
+              getItemLayout={(_: any, index: number) => ({
+                length: width,
+                offset: width * index,
+                index,
+              })}
+              onMomentumScrollEnd={(ev) => {
+                const newIndex = Math.round(ev.nativeEvent.contentOffset.x / width);
+                setActiveSlide(Math.max(0, Math.min(newIndex, (heroSeries || HERO_SLIDES).length - 1)));
+              }}
+            />
+          )}
           
           {/* Pagination Dots */}
-          <View className="flex-row justify-center items-center mt-4 space-x-2">
-            {HERO_SLIDES.map((_, i) => (
+          <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 12, gap: 6 }}>
+            {((heroSeries && heroSeries.length > 0) ? heroSeries : HERO_SLIDES).map((_: any, i: number) => (
               <View 
                 key={i} 
-                className={`h-1.5 rounded-full ${i === activeSlide ? 'w-4 bg-noir-primary' : 'w-1.5 bg-zinc-700'}`}
+                style={{ height: 3, borderRadius: 99, backgroundColor: i === activeSlide ? '#F97316' : '#3f3f46', width: i === activeSlide ? 20 : 6 }}
               />
             ))}
           </View>
 
           {/* Top Picks For You */}
-          <View className="mt-8 pl-6">
-            <Text className="text-white text-xl font-bold mb-4 tracking-tight">Top Picks For You</Text>
+          <View style={{ marginTop: 28 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 16 }}>
+              <View style={{ width: 3, height: 18, backgroundColor: '#F97316', borderRadius: 99, marginRight: 10 }} />
+              <Text style={{ color: 'white', fontSize: 18, fontWeight: '800', letterSpacing: -0.5 }}>Top Picks For You</Text>
+            </View>
             {topPicksLoading ? (
               <FlatList 
                 data={[1, 2, 3]}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                renderItem={() => <Skeleton className="w-36 h-52 mr-4 rounded-md" />}
+                contentContainerStyle={{ paddingHorizontal: 24 }}
+                renderItem={() => <Skeleton className="w-36 h-52 mr-4 rounded-xl" />}
               />
             ) : (
               <FlatList 
@@ -210,32 +269,78 @@ export default function HomeScreen() {
                 keyExtractor={(item) => item.id}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                snapToInterval={144 + 16} // width (144) + margin (16)
+                snapToInterval={144 + 16}
                 snapToAlignment="start"
                 decelerationRate="fast"
-                contentContainerStyle={{ paddingRight: 24 }}
+                contentContainerStyle={{ paddingHorizontal: 24, paddingRight: 24 }}
               />
             )}
           </View>
 
-          {/* Genres */}
-          <View className="mt-10 pl-6 mb-8">
-            <Text className="text-white text-xl font-bold mb-4 tracking-tight">Genres</Text>
-            <FlatList 
-              data={GENRES}
-              renderItem={renderGenre}
-              keyExtractor={(item) => item.id}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              snapToInterval={160 + 16} // width (160) + margin (16)
-              snapToAlignment="start"
-              decelerationRate="fast"
-              contentContainerStyle={{ paddingRight: 24 }}
-            />
+          {/* Genres Tab Bar */}
+          <View style={{ marginTop: 28, marginBottom: 16 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 24, marginBottom: 14 }}>
+              <View style={{ width: 3, height: 18, backgroundColor: '#F97316', borderRadius: 99, marginRight: 10 }} />
+              <Text style={{ color: 'white', fontSize: 18, fontWeight: '800', letterSpacing: -0.5 }}>Explore Genres</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}>
+              <PressableScale
+                onPress={() => setActiveGenreTab('All')}
+                className={`px-5 py-2.5 rounded-full border ${activeGenreTab === 'All' ? 'bg-white border-white' : 'bg-transparent border-zinc-700'}`}
+              >
+                <Text className={`font-bold ${activeGenreTab === 'All' ? 'text-black' : 'text-zinc-300'}`}>All</Text>
+              </PressableScale>
+              {dynamicGenres.map((genre) => (
+                <PressableScale
+                  key={genre.id}
+                  onPress={() => setActiveGenreTab(genre.name)}
+                  className={`px-5 py-2.5 rounded-full border ${activeGenreTab === genre.name ? 'border-transparent' : 'bg-transparent border-zinc-700'}`}
+                  style={activeGenreTab === genre.name ? { backgroundColor: genre.color } : {}}
+                >
+                  <Text className={`font-bold ${activeGenreTab === genre.name ? 'text-white' : 'text-zinc-300'}`}>{genre.name}</Text>
+                </PressableScale>
+              ))}
+            </ScrollView>
           </View>
+
+          {/* Filtered Series Grid */}
+          <View className="px-6 mb-8 flex-row flex-wrap gap-[3.5%] gap-y-6">
+            {allSeriesLoading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="w-[31%] h-40 rounded-md" />
+              ))
+            ) : (
+              (activeGenreTab === 'All' ? allSeries : allSeries?.filter((s: any) => s.genre?.toLowerCase() === activeGenreTab.toLowerCase()))?.map((item: any) => (
+                <PressableScale 
+                  key={item.id}
+                  onPress={() => handlePress(item.id)}
+                  className="w-[31%] relative rounded-md overflow-hidden bg-noir-card border border-zinc-800"
+                >
+                  <Image 
+                    source={{ uri: item.cover_thumb_url || item.cover_large_url || 'https://via.placeholder.com/400' }}
+                    className="w-full h-40"
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(17,17,17,0.9)', '#111111']}
+                    className="absolute bottom-0 left-0 right-0 h-16"
+                  />
+                  <View className="absolute bottom-2 left-1.5 right-1.5">
+                    <Text className="text-white font-bold text-[10px]" numberOfLines={2}>{item.title}</Text>
+                  </View>
+                </PressableScale>
+              ))
+            )}
+            {(!allSeriesLoading && allSeries && allSeries.length > 0 && activeGenreTab !== 'All' && !allSeries.some((s: any) => s.genre?.toLowerCase() === activeGenreTab.toLowerCase())) && (
+              <View className="w-full items-center justify-center py-10">
+                <Text className="text-zinc-500 font-medium">No series in this genre yet.</Text>
+              </View>
+            )}
+          </View>
+          <View className="h-8" />
         </View>
       )}
     />
+    </View>
   );
 }
 

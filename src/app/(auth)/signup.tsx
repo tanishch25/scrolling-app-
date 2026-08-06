@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -114,20 +114,23 @@ export default function SignupScreen() {
               <PressableScale 
                 onPress={handleSignup}
                 disabled={loading}
-                className="w-full rounded-full overflow-hidden"
+                className="w-full h-14"
               >
-                <LinearGradient
-                  colors={['#F97316', '#C2410C']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  className="py-4 items-center justify-center border-t border-[#FF9852]"
-                >
-                  {loading ? (
-                    <ActivityIndicator color="white" />
-                  ) : (
-                    <Text className="text-white font-bold text-base tracking-widest uppercase">Sign Up</Text>
-                  )}
-                </LinearGradient>
+                <View className="flex-1 rounded-full overflow-hidden">
+                  <LinearGradient
+                    colors={['#F97316', '#C2410C']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  <View className="flex-1 items-center justify-center">
+                    {loading ? (
+                      <ActivityIndicator color="white" />
+                    ) : (
+                      <Text className="text-white font-bold text-base tracking-widest uppercase">Sign Up</Text>
+                    )}
+                  </View>
+                </View>
               </PressableScale>
 
               <PressableScale onPress={() => router.back()} className="py-4 items-center justify-center">
@@ -140,3 +143,4 @@ export default function SignupScreen() {
     </KeyboardAvoidingView>
   );
 }
+
