@@ -104,7 +104,7 @@ export default function HomeScreen() {
     const description = item.teaser || item.description || '';
     const isWatchlisted = watchlistedIds.has(item.id);
     return (
-      <View style={{ width }} className="px-5 pt-32 pb-2">
+      <View style={{ width, paddingTop: 140 }} className="px-5 pb-2">
         {/* Compact Hero Card - smaller than screen with rounded corners */}
         <View style={{ height: 400, borderRadius: 28, overflow: 'hidden' }}>
           {/* Thumbnail - using absoluteFill with explicit pixel size */}
@@ -333,12 +333,14 @@ export default function HomeScreen() {
       )}
     />
 
-      {/* Fixed App Logo - positioned after FlatList so it is always drawn on top */}
-      <View style={{ position: 'absolute', top: 56, left: 24, zIndex: 999, elevation: 10 }} pointerEvents="none">
-        <Image 
-          source={require('../../../assets/images/icon.png')}
-          style={{ width: 40, height: 40, borderRadius: 10 }}
-        />
+      {/* Fixed App Logo - Wrapped in absoluteFill to guarantee it never scrolls on any device */}
+      <View style={[StyleSheet.absoluteFill, { zIndex: 999, elevation: 10 }]} pointerEvents="none">
+        <View style={{ marginTop: 56, marginLeft: 24 }}>
+          <Image 
+            source={require('../../../assets/images/icon.png')}
+            style={{ width: 40, height: 40, borderRadius: 10 }}
+          />
+        </View>
       </View>
     </View>
   );
