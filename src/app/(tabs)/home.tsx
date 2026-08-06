@@ -194,8 +194,8 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-noir-bg" style={{ position: 'relative' }}>
-      {/* Fixed App Logo - always at top right, never scrolls */}
-      <View style={{ position: 'absolute', top: 56, right: 20, zIndex: 100 }}>
+      {/* Fixed App Logo - always at top left, never scrolls */}
+      <View style={{ position: 'absolute', top: 56, left: 20, zIndex: 999, elevation: 10 }}>
         <Image 
           source={require('../../../assets/images/icon.png')}
           style={{ width: 40, height: 40, borderRadius: 10 }}
