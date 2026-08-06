@@ -330,6 +330,7 @@ export default function HomeScreen() {
           </View>
           <View className="h-8" />
         </View>
+      )}
     />
 
       {/* Fixed App Logo - positioned after FlatList so it is always drawn on top */}
