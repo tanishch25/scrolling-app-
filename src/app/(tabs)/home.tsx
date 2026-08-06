@@ -104,7 +104,7 @@ export default function HomeScreen() {
     const description = item.teaser || item.description || '';
     const isWatchlisted = watchlistedIds.has(item.id);
     return (
-      <View style={{ width, paddingTop: 140 }} className="px-5 pb-2">
+      <View style={{ width, paddingTop: 100 }} className="px-5 pb-2">
         {/* Compact Hero Card - smaller than screen with rounded corners */}
         <View style={{ height: 400, borderRadius: 28, overflow: 'hidden' }}>
           {/* Thumbnail - using absoluteFill with explicit pixel size */}
@@ -193,8 +193,9 @@ export default function HomeScreen() {
   );
 
   return (
-    <View className="flex-1 bg-noir-bg" style={{ position: 'relative' }}>
-      <FlatList 
+    <>
+      <View className="flex-1 bg-noir-bg" style={{ position: 'relative' }}>
+        <FlatList 
         data={[{ key: 'content' }]}
         className="flex-1"
         bounces={false}
@@ -332,17 +333,16 @@ export default function HomeScreen() {
         </View>
       )}
     />
-
-      {/* Fixed App Logo - Wrapped in absoluteFill to guarantee it never scrolls on any device */}
-      <View style={[StyleSheet.absoluteFill, { zIndex: 999, elevation: 10 }]} pointerEvents="none">
-        <View style={{ marginTop: 56, marginLeft: 24 }}>
-          <Image 
-            source={require('../../../assets/images/icon.png')}
-            style={{ width: 40, height: 40, borderRadius: 10 }}
-          />
-        </View>
       </View>
-    </View>
+
+      {/* Fixed App Logo - Attached to the Root Fragment so it is physically impossible to scroll */}
+      <View style={{ position: 'absolute', top: 56, left: 24, zIndex: 9999, elevation: 20 }} pointerEvents="none">
+        <Image 
+          source={require('../../../assets/images/icon.png')}
+          style={{ width: 40, height: 40, borderRadius: 10 }}
+        />
+      </View>
+    </>
   );
 }
 
