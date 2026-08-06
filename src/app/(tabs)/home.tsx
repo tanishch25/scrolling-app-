@@ -104,13 +104,13 @@ export default function HomeScreen() {
     const description = item.teaser || item.description || '';
     const isWatchlisted = watchlistedIds.has(item.id);
     return (
-      <View style={{ width, paddingTop: 100 }} className="px-5 pb-2">
+      <View style={{ width, paddingTop: 64 }} className="px-5 pb-2">
         {/* Compact Hero Card - smaller than screen with rounded corners */}
-        <View style={{ height: 400, borderRadius: 28, overflow: 'hidden' }}>
+        <View style={{ height: 420, borderRadius: 32, overflow: 'hidden', backgroundColor: '#111', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#F97316', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 12 }}>
           {/* Thumbnail - using absoluteFill with explicit pixel size */}
           <Image 
             source={imageUri ? { uri: imageUri } : require('../../../assets/images/icon.png')}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: width - 40, height: 400 }}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: width - 40, height: 420 }}
             resizeMode="cover"
           />
           {/* Gradient only at very bottom so thumbnail shows clearly */}
@@ -333,14 +333,6 @@ export default function HomeScreen() {
         </View>
       )}
     />
-      </View>
-
-      {/* Fixed App Logo - Attached to the Root Fragment so it is physically impossible to scroll */}
-      <View style={{ position: 'absolute', top: 56, left: 24, zIndex: 9999, elevation: 20 }} pointerEvents="none">
-        <Image 
-          source={require('../../../assets/images/icon.png')}
-          style={{ width: 40, height: 40, borderRadius: 10 }}
-        />
       </View>
     </>
   );
