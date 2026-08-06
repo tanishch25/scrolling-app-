@@ -330,8 +330,15 @@ export default function HomeScreen() {
           </View>
           <View className="h-8" />
         </View>
-      )}
     />
+
+      {/* Fixed App Logo - positioned after FlatList so it is always drawn on top */}
+      <View style={{ position: 'absolute', top: 56, left: 24, zIndex: 999, elevation: 10 }} pointerEvents="none">
+        <Image 
+          source={require('../../../assets/images/icon.png')}
+          style={{ width: 40, height: 40, borderRadius: 10 }}
+        />
+      </View>
     </View>
   );
 }
