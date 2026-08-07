@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Plus, Search, MoreVertical, Film, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, MoreVertical, Film, Image as ImageIcon, Trash2, Star } from 'lucide-react';
 import type { Database } from '../lib/database';
 
 type Series = Database['public']['Tables']['series']['Row'];
@@ -10,7 +10,8 @@ export default function SeriesList() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newSeries, setNewSeries] = useState({ title: '', genre: '', description: '', cover_thumb_url: '' });
+  const [editingSeries, setEditingSeries] = useState<Series | null>(null);
+  const [newSeries, setNewSeries] = useState({ title: '', genre: '', description: '', cover_thumb_url: '', cover_large_url: '' });
 
   const { data: series, isLoading } = useQuery({
     queryKey: ['admin_series'],
@@ -34,7 +35,39 @@ export default function SeriesList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_series'] });
       setIsModalOpen(false);
-      setNewSeries({ title: '', genre: '', description: '', cover_thumb_url: '' });
+      setNewSeries({ title: '', genre: '', description: '', cover_thumb_url: '', cover_large_url: '' });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async (updatedS: Partial<Series> & { id: string }) => {
+      const { data, error } = await supabase.from('series').update(updatedS).eq('id', updatedS.id).select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_series'] });
+      setEditingSeries(null);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('series').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_series'] });
+    }
+  });
+
+  const toggleHeroMutation = useMutation({
+    mutationFn: async ({ id, featured }: { id: string, featured: boolean }) => {
+      const { error } = await supabase.from('series').update({ featured }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin_series'] });
     }
   });
 
@@ -45,7 +78,21 @@ export default function SeriesList() {
       genre: newSeries.genre,
       description: newSeries.description,
       cover_thumb_url: newSeries.cover_thumb_url,
+      cover_large_url: newSeries.cover_large_url,
       status: 'ongoing'
+    });
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSeries) return;
+    updateMutation.mutate({
+      id: editingSeries.id,
+      title: editingSeries.title,
+      genre: editingSeries.genre,
+      description: editingSeries.description,
+      cover_thumb_url: editingSeries.cover_thumb_url,
+      cover_large_url: editingSeries.cover_large_url,
     });
   };
 
@@ -89,16 +136,45 @@ export default function SeriesList() {
                     <ImageIcon size={48} />
                   </div>
                 )}
-                <div className="absolute top-3 right-3 bg-black/60 backdrop-blur rounded px-2 py-1 border border-white/10">
+                <div className="absolute top-3 right-3 flex gap-2">
+                  <button 
+                    onClick={() => toggleHeroMutation.mutate({ id: item.id, featured: !item.featured })}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center backdrop-blur transition-colors ${item.featured ? 'bg-orange-500 text-white' : 'bg-black/60 text-zinc-400 hover:bg-black/80'}`}
+                    title={item.featured ? "Remove from Hero" : "Set as Hero"}
+                  >
+                    <Star size={14} fill={item.featured ? "white" : "transparent"} />
+                  </button>
+                  <button 
+                    onClick={() => setEditingSeries(item)}
+                    className="w-8 h-8 bg-zinc-500/20 text-zinc-300 rounded-lg flex items-center justify-center backdrop-blur hover:bg-zinc-500/40 transition-colors"
+                    title="Edit Series"
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this series?')) {
+                        deleteMutation.mutate(item.id);
+                      }
+                    }}
+                    className="w-8 h-8 bg-red-500/20 text-red-400 rounded-lg flex items-center justify-center backdrop-blur hover:bg-red-500/40 transition-colors"
+                    title="Delete Series"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                <div className="absolute top-3 left-3 bg-black/60 backdrop-blur rounded px-2 py-1 border border-white/10">
                   <span className="text-[10px] font-bold uppercase tracking-widest text-orange-400">{item.status}</span>
                 </div>
               </div>
               <div className="p-4">
-                <h3 className="font-bold text-lg text-white mb-1">{item.title}</h3>
+                <h3 className="font-bold text-lg text-white mb-1 flex items-center gap-2">
+                  {item.title}
+                  {item.featured && <span className="px-1.5 py-0.5 rounded-sm bg-orange-500/20 text-orange-500 text-[8px] uppercase tracking-widest">Hero</span>}
+                </h3>
                 <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-3">{item.genre || 'Uncategorized'}</p>
                 <div className="flex justify-between items-center text-xs font-medium text-zinc-400">
                   <span className="flex items-center gap-1"><Film size={14} /> {item.total_episodes || 0} Episodes</span>
-                  <button className="text-zinc-500 hover:text-white"><MoreVertical size={16} /></button>
                 </div>
               </div>
             </div>
@@ -122,9 +198,15 @@ export default function SeriesList() {
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Genre</label>
                 <input type="text" value={newSeries.genre} onChange={e => setNewSeries({...newSeries, genre: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
               </div>
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Thumbnail URL</label>
-                <input type="url" value={newSeries.cover_thumb_url} onChange={e => setNewSeries({...newSeries, cover_thumb_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Thumbnail URL</label>
+                  <input type="url" value={newSeries.cover_thumb_url} onChange={e => setNewSeries({...newSeries, cover_thumb_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Large Cover URL</label>
+                  <input type="url" value={newSeries.cover_large_url} onChange={e => setNewSeries({...newSeries, cover_large_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Description</label>
@@ -134,6 +216,47 @@ export default function SeriesList() {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-lg font-bold uppercase tracking-widest text-xs text-zinc-400 hover:text-white">Cancel</button>
                 <button type="submit" disabled={createMutation.isPending} className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-xs disabled:opacity-50">
                   {createMutation.isPending ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingSeries && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-zinc-800 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Edit Series</h2>
+              <button onClick={() => setEditingSeries(null)} className="text-zinc-500 hover:text-white">✕</button>
+            </div>
+            <form onSubmit={handleUpdate} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Title</label>
+                <input required type="text" value={editingSeries.title} onChange={e => setEditingSeries({...editingSeries, title: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Genre</label>
+                <input type="text" value={editingSeries.genre} onChange={e => setEditingSeries({...editingSeries, genre: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Thumbnail URL</label>
+                  <input type="url" value={editingSeries.cover_thumb_url || ''} onChange={e => setEditingSeries({...editingSeries, cover_thumb_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Large Cover URL</label>
+                  <input type="url" value={editingSeries.cover_large_url || ''} onChange={e => setEditingSeries({...editingSeries, cover_large_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Description</label>
+                <textarea rows={3} value={editingSeries.description || ''} onChange={e => setEditingSeries({...editingSeries, description: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <button type="button" onClick={() => setEditingSeries(null)} className="px-4 py-2 rounded-lg font-bold uppercase tracking-widest text-xs text-zinc-400 hover:text-white">Cancel</button>
+                <button type="submit" disabled={updateMutation.isPending} className="bg-orange-600 hover:bg-orange-500 text-white px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-xs disabled:opacity-50">
+                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

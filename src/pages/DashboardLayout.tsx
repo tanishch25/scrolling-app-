@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { PenTool, Film, ListVideo, Settings, LogOut } from 'lucide-react';
+import { PenTool, Film, ListVideo, Settings, LogOut, PlayCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 export default function DashboardLayout() {
@@ -20,6 +20,7 @@ export default function DashboardLayout() {
 
   const navItems = [
     { name: 'Series', path: '/dashboard', icon: Film },
+    { name: 'Episodes', path: '/dashboard/episodes', icon: PlayCircle },
     { name: 'Spotlight', path: '/dashboard/spotlight', icon: ListVideo },
     { name: 'Settings', path: '/dashboard/settings', icon: Settings },
   ];

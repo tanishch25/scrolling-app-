@@ -6,6 +6,7 @@ import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import DashboardLayout from './pages/DashboardLayout';
 import SeriesList from './pages/SeriesList';
+import EpisodeManagement from './pages/EpisodeManagement';
 import SpotlightManagement from './pages/SpotlightManagement';
 
 const queryClient = new QueryClient();
@@ -19,6 +20,7 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<SeriesList />} />
+              <Route path="episodes" element={<EpisodeManagement />} />
               <Route path="spotlight" element={<SpotlightManagement />} />
               {/* Settings placeholder */}
               <Route path="settings" element={<div className="text-zinc-500">Settings coming soon</div>} />
