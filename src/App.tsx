@@ -9,6 +9,9 @@ import DashboardLayout from './pages/DashboardLayout';
 import SeriesList from './pages/SeriesList';
 import EpisodeManagement from './pages/EpisodeManagement';
 import SpotlightManagement from './pages/SpotlightManagement';
+import HomeLayoutPage from './pages/HomeLayout';
+import UserManagement from './pages/UserManagement';
+import SettingsPage from './pages/Settings';
 
 const queryClient = new QueryClient();
 
@@ -23,8 +26,9 @@ function App() {
               <Route index element={<SeriesList />} />
               <Route path="episodes" element={<EpisodeManagement />} />
               <Route path="spotlight" element={<SpotlightManagement />} />
-              {/* Settings placeholder */}
-              <Route path="settings" element={<div className="text-zinc-500">Settings coming soon</div>} />
+              <Route path="layout" element={<HomeLayoutPage />} />
+              <Route path="users" element={<UserManagement />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

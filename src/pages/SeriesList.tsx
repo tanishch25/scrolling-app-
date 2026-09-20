@@ -11,7 +11,7 @@ export default function SeriesList() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSeries, setEditingSeries] = useState<Series | null>(null);
-  const [newSeries, setNewSeries] = useState({ title: '', genre: '', description: '', cover_thumb_url: '', cover_large_url: '' });
+  const [newSeries, setNewSeries] = useState({ title: '', genre: '', description: '', cover_thumb_url: '', cover_large_url: '', trailer_url: '' });
 
   const { data: series, isLoading } = useQuery({
     queryKey: ['admin_series'],
@@ -35,7 +35,11 @@ export default function SeriesList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_series'] });
       setIsModalOpen(false);
-      setNewSeries({ title: '', genre: '', description: '', cover_thumb_url: '', cover_large_url: '' });
+      setNewSeries({ title: '', genre: '', description: '', cover_thumb_url: '', cover_large_url: '', trailer_url: '' });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to create series: ${error.message}`);
     }
   });
 
@@ -48,6 +52,10 @@ export default function SeriesList() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_series'] });
       setEditingSeries(null);
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to update series: ${error.message}`);
     }
   });
 
@@ -58,6 +66,10 @@ export default function SeriesList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_series'] });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to delete series: ${error.message}`);
     }
   });
 
@@ -68,32 +80,52 @@ export default function SeriesList() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_series'] });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to update hero status: ${error.message}`);
     }
   });
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({
+    
+    // Clean up payload: Remove empty strings so the DB uses defaults or ignores missing optional columns
+    const payload: Partial<Series> = {
       title: newSeries.title,
-      genre: newSeries.genre,
-      description: newSeries.description,
-      cover_thumb_url: newSeries.cover_thumb_url,
-      cover_large_url: newSeries.cover_large_url,
+      genre: newSeries.genre || null,
+      description: newSeries.description || null,
+      cover_thumb_url: newSeries.cover_thumb_url || null,
+      cover_large_url: newSeries.cover_large_url || null,
       status: 'ongoing'
-    });
+    };
+    
+    // Only include trailer_url if it has a value, to avoid schema cache crashes if the column is missing
+    if (newSeries.trailer_url) {
+      payload.trailer_url = newSeries.trailer_url;
+    }
+
+    createMutation.mutate(payload);
   };
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSeries) return;
-    updateMutation.mutate({
+    
+    const payload: Partial<Series> = {
       id: editingSeries.id,
       title: editingSeries.title,
-      genre: editingSeries.genre,
-      description: editingSeries.description,
-      cover_thumb_url: editingSeries.cover_thumb_url,
-      cover_large_url: editingSeries.cover_large_url,
-    });
+      genre: editingSeries.genre || null,
+      description: editingSeries.description || null,
+      cover_thumb_url: editingSeries.cover_thumb_url || null,
+      cover_large_url: editingSeries.cover_large_url || null,
+    };
+    
+    if (editingSeries.trailer_url) {
+      payload.trailer_url = editingSeries.trailer_url;
+    }
+
+    updateMutation.mutate(payload);
   };
 
   const filteredSeries = series?.filter(s => s.title.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -173,8 +205,12 @@ export default function SeriesList() {
                   {item.featured && <span className="px-1.5 py-0.5 rounded-sm bg-orange-500/20 text-orange-500 text-[8px] uppercase tracking-widest">Hero</span>}
                 </h3>
                 <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mb-3">{item.genre || 'Uncategorized'}</p>
-                <div className="flex justify-between items-center text-xs font-medium text-zinc-400">
+                <div className="flex justify-between items-center text-xs font-medium text-zinc-400 mb-2">
                   <span className="flex items-center gap-1"><Film size={14} /> {item.total_episodes || 0} Episodes</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-medium text-zinc-500 border-t border-white/5 pt-2">
+                  <span className="flex items-center gap-1" title="Total Views">👁️ {(item as any).total_views || 0}</span>
+                  <span className="flex items-center gap-1" title="Watchlist Adds">➕ {(item as any).watchlist_count || 0}</span>
                 </div>
               </div>
             </div>
@@ -207,6 +243,10 @@ export default function SeriesList() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Large Cover URL</label>
                   <input type="url" value={newSeries.cover_large_url} onChange={e => setNewSeries({...newSeries, cover_large_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Trailer Video URL</label>
+                <input type="url" value={newSeries.trailer_url} onChange={e => setNewSeries({...newSeries, trailer_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" placeholder="Optional background trailer" />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Description</label>
@@ -248,6 +288,10 @@ export default function SeriesList() {
                   <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Large Cover URL</label>
                   <input type="url" value={editingSeries.cover_large_url || ''} onChange={e => setEditingSeries({...editingSeries, cover_large_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Trailer Video URL</label>
+                <input type="url" value={editingSeries.trailer_url || ''} onChange={e => setEditingSeries({...editingSeries, trailer_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" placeholder="Optional background trailer" />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Description</label>

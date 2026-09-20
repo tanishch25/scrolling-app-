@@ -44,6 +44,7 @@ export interface Database {
           cover_medium_url: string | null
           cover_large_url: string | null
           banner_url: string | null
+          trailer_url: string | null
           total_episodes: number
           total_views: number
           engagement_score: number
@@ -98,7 +99,8 @@ export interface Database {
           id: string
           series_id: string
           episode_id: string | null
-          video_url: string
+          video_url: string | null
+          photos: string[] | null
           caption: string | null
           hashtags: string[] | null
           views: number

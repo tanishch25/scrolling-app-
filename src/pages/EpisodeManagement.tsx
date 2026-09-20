@@ -110,6 +110,10 @@ export default function EpisodeManagement() {
       queryClient.invalidateQueries({ queryKey: ['admin_series'] });
       setIsModalOpen(false);
       setNewEpisode({ title: '', episode_number: (episodes?.length || 0) + 2, video_url: '', thumbnail_url: '', duration: 15, description: '' });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to create episode: ${error.message}`);
     }
   });
 
@@ -120,6 +124,10 @@ export default function EpisodeManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_episodes'] });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to delete episode: ${error.message}`);
     }
   });
 

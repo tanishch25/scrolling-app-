@@ -10,7 +10,7 @@ type Series = Database['public']['Tables']['series']['Row'];
 export default function SpotlightManagement() {
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newSpotlight, setNewSpotlight] = useState({ series_id: '', video_url: '', caption: '' });
+  const [newSpotlight, setNewSpotlight] = useState({ series_id: '', video_url: '', caption: '', photos: '', is_ad: false, product_url: '', target_tags: '' });
 
   const { data: spotlightItems, isLoading } = useQuery({
     queryKey: ['admin_spotlight'],
@@ -43,7 +43,11 @@ export default function SpotlightManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_spotlight'] });
       setIsModalOpen(false);
-      setNewSpotlight({ series_id: '', video_url: '', caption: '' });
+      setNewSpotlight({ series_id: '', video_url: '', caption: '', photos: '', is_ad: false, product_url: '', target_tags: '' });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to create spotlight: ${error.message}`);
     }
   });
 
@@ -54,16 +58,35 @@ export default function SpotlightManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin_spotlight'] });
+    },
+    onError: (error: any) => {
+      console.error("DB Error:", error.message, error.details, error.hint);
+      alert(`Failed to delete spotlight: ${error.message}`);
     }
   });
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    createMutation.mutate({
-      series_id: newSpotlight.series_id,
-      video_url: newSpotlight.video_url,
-      caption: newSpotlight.caption,
-    });
+    
+    // Clean up payload: Remove empty fields so the DB uses defaults or ignores missing optional columns
+    const payload: Partial<Spotlight> & { is_ad?: boolean, product_url?: string | null, target_tags?: string[] | null } = {
+      series_id: newSpotlight.is_ad ? undefined : newSpotlight.series_id,
+      caption: newSpotlight.caption || null,
+      is_ad: newSpotlight.is_ad,
+      product_url: newSpotlight.is_ad ? newSpotlight.product_url : null,
+      target_tags: newSpotlight.is_ad && newSpotlight.target_tags ? newSpotlight.target_tags.split(',').map(t => t.trim().toLowerCase()) : null
+    };
+    
+    if (newSpotlight.video_url) {
+      payload.video_url = newSpotlight.video_url;
+    }
+    
+    // Only include photos if the user actually provided some, to avoid schema cache crashes
+    if (newSpotlight.photos && newSpotlight.photos.trim() !== '') {
+      payload.photos = newSpotlight.photos.split(',').map(p => p.trim()).filter(Boolean);
+    }
+
+    createMutation.mutate(payload as any);
   };
 
   return (
@@ -89,13 +112,19 @@ export default function SpotlightManagement() {
           {spotlightItems?.map((item) => (
             <div key={item.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden flex flex-col">
               <div className="aspect-[9/16] bg-zinc-950 relative">
-                <video 
-                  src={item.video_url} 
-                  className="w-full h-full object-cover opacity-70"
-                  muted 
-                  loop 
-                  autoPlay
-                />
+                {item.video_url ? (
+                  <video 
+                    src={item.video_url} 
+                    className="w-full h-full object-cover opacity-70"
+                    muted 
+                    loop 
+                    autoPlay
+                  />
+                ) : item.photos && item.photos.length > 0 ? (
+                  <img src={item.photos[0]} alt="Spotlight" className="w-full h-full object-cover opacity-70" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-800">No Media</div>
+                )}
                 <div className="absolute top-3 right-3 flex gap-2">
                   <button 
                     onClick={() => {
@@ -130,23 +159,51 @@ export default function SpotlightManagement() {
               <button onClick={() => setIsModalOpen(false)} className="text-zinc-500 hover:text-white">✕</button>
             </div>
             <form onSubmit={handleCreate} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Linked Series</label>
-                <select 
-                  required
-                  value={newSpotlight.series_id}
-                  onChange={e => setNewSpotlight({...newSpotlight, series_id: e.target.value})}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
-                >
-                  <option value="">Select a Series</option>
-                  {series?.map(s => (
-                    <option key={s.id} value={s.id}>{s.title}</option>
-                  ))}
-                </select>
+              <div className="flex items-center gap-2 mb-4">
+                <input 
+                  type="checkbox" 
+                  id="is_ad" 
+                  checked={newSpotlight.is_ad} 
+                  onChange={e => setNewSpotlight({...newSpotlight, is_ad: e.target.checked})} 
+                  className="w-4 h-4 rounded border-zinc-800 text-orange-600 focus:ring-orange-600 focus:ring-offset-zinc-900 bg-zinc-950"
+                />
+                <label htmlFor="is_ad" className="text-sm font-bold text-white uppercase tracking-widest">Mark as Sponsored Ad</label>
               </div>
+
+              {!newSpotlight.is_ad ? (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Linked Series</label>
+                  <select 
+                    required
+                    value={newSpotlight.series_id}
+                    onChange={e => setNewSpotlight({...newSpotlight, series_id: e.target.value})}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                  >
+                    <option value="">Select a Series</option>
+                    {series?.map(s => (
+                      <option key={s.id} value={s.id}>{s.title}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Product URL</label>
+                    <input type="url" required placeholder="https://store.example.com/product" value={newSpotlight.product_url} onChange={e => setNewSpotlight({...newSpotlight, product_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Targeting Tags (comma-separated)</label>
+                    <input type="text" required placeholder="fitness, fashion, technology" value={newSpotlight.target_tags} onChange={e => setNewSpotlight({...newSpotlight, target_tags: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Video CDN URL (Vertical 9:16)</label>
-                <input required type="url" placeholder="https://..." value={newSpotlight.video_url} onChange={e => setNewSpotlight({...newSpotlight, video_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+                <input type="url" placeholder="https://..." value={newSpotlight.video_url} onChange={e => setNewSpotlight({...newSpotlight, video_url: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Photos (Comma-separated URLs)</label>
+                <input type="text" placeholder="https://img1.jpg, https://img2.jpg" value={newSpotlight.photos} onChange={e => setNewSpotlight({...newSpotlight, photos: e.target.value})} className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500" />
               </div>
               <div>
                 <label className="block text-xs font-bold uppercase tracking-widest text-zinc-500 mb-2">Caption</label>
